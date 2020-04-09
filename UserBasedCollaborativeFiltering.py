@@ -4,14 +4,6 @@ import random
 import collections
 import math
 
-# ratings = pd.read_csv('./ml-latest-small/ratings.csv', header=0)
-# print(ratings.count())
-#
-# movies = pd.read_csv('./ml-latest-small/movies.csv', header=0)
-# print(movies.count())
-#
-# movie_freq = ratings.movieId.value_counts()
-# print(movie_freq)
 
 class UserBasedCollaborativeFiltering:
 
