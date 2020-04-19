@@ -20,7 +20,7 @@ class MatrixFactorization:
         self.rating_predict_matrix = {}
 
     def generate_dataset(self):
-        ratings = pd.read_csv('./ml-latest/ratings.csv', usecols=['userId', 'movieId', 'rating'],
+        ratings = pd.read_csv('./ml-latest-small/ratings.csv', usecols=['userId', 'movieId', 'rating'],
                               dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
         self.train_dataset, self.test_dataset = train_test_split(ratings, train_size=0.8)
         self.pivot_table = self.train_dataset.pivot(index='userId', columns='movieId', values='rating').fillna(0)
