@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import math
 
 
@@ -19,22 +18,25 @@ class ItemBasedCollaborativeFiltering:
         self.user_id_dict = {}
         self.movie_id_dict = {}
 
-    def generate_dataset(self, filename, split_param=0.8):
-        ratings = np.loadtxt(filename, dtype=np.str, delimiter=',')[1:].tolist()
+    def generate_dataset(self, training_set_file, testing_set_file):
+        training_ratings = np.loadtxt(training_set_file, dtype=np.str, delimiter=',')[1:].tolist()
+        testing_ratings = np.loadtxt(testing_set_file, dtype=np.str, delimiter=',')[1:].tolist()
         user_set = set()
         movie_set = set()
-        for line in ratings:
-            user_id = int(line[0])
-            movie_id = int(line[1])
-            rating = float(line[2])
-            if random.random() < split_param:
-                self.training_dataset.setdefault(user_id, {})
-                self.training_dataset[user_id][movie_id] = rating
-                user_set.add(user_id)
-                movie_set.add(movie_id)
-            else:
-                self.testing_dataset.setdefault(user_id, {})
-                self.testing_dataset[user_id][movie_id] = rating
+        for line in training_ratings:
+            user_id = int(line[1])
+            movie_id = int(line[2])
+            rating = float(line[3])
+            self.training_dataset.setdefault(user_id, {})
+            self.training_dataset[user_id][movie_id] = rating
+            user_set.add(user_id)
+            movie_set.add(movie_id)
+        for line in testing_ratings:
+            user_id = int(line[1])
+            movie_id = int(line[2])
+            rating = float(line[3])
+            self.testing_dataset.setdefault(user_id, {})
+            self.testing_dataset[user_id][movie_id] = rating
         self.user_number = len(user_set)
         self.movie_number = len(movie_set)
         self.user_list = sorted(list(user_set))
@@ -151,6 +153,7 @@ class ItemBasedCollaborativeFiltering:
 
 
 item_based_cf = ItemBasedCollaborativeFiltering()
-item_based_cf.generate_dataset('./ml-latest-small/ratings_dealt.csv')
+# item_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
+item_based_cf.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
 item_based_cf.calculate_movie_similarity()
 item_based_cf.test()

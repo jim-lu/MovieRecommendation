@@ -1,5 +1,4 @@
 import numpy as np
-import random
 import collections
 import math
 
@@ -14,18 +13,21 @@ class UserBasedCollaborativeFiltering:
         self.similarity_matrix = {}
         self.rating_predict_matrix = {}
 
-    def generate_dataset(self, filename, split_param=0.8):
-        ratings = np.loadtxt(filename, dtype=np.str, delimiter=',')[1:].tolist()
-        for line in ratings:
-            user_id = line[0]
-            movie_id = line[1]
-            rating = line[2]
-            if random.random() < split_param:
-                self.training_dataset.setdefault(user_id, {})
-                self.training_dataset[user_id][movie_id] = float(rating)
-            else:
-                self.testing_dataset.setdefault(user_id, {})
-                self.testing_dataset[user_id][movie_id] = float(rating)
+    def generate_dataset(self, training_set_file, testing_set_file):
+        training_ratings = np.loadtxt(training_set_file, dtype=np.str, delimiter=',')[1:].tolist()
+        testing_ratings = np.loadtxt(testing_set_file, dtype=np.str, delimiter=',')[1:].tolist()
+        for line in training_ratings:
+            user_id = line[1]
+            movie_id = line[2]
+            rating = line[3]
+            self.training_dataset.setdefault(user_id, {})
+            self.training_dataset[user_id][movie_id] = float(rating)
+        for line in testing_ratings:
+            user_id = line[1]
+            movie_id = line[2]
+            rating = line[3]
+            self.testing_dataset.setdefault(user_id, {})
+            self.testing_dataset[user_id][movie_id] = float(rating)
 
     def calculate_user_similarity(self):
         """
@@ -135,6 +137,7 @@ class UserBasedCollaborativeFiltering:
 
 
 user_based_cf = UserBasedCollaborativeFiltering()
-user_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
+# user_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
+user_based_cf.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
 user_based_cf.calculate_user_similarity()
 user_based_cf.test()

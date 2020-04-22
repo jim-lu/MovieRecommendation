@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import math
 from scipy.sparse.linalg import svds
-from sklearn.model_selection import train_test_split
 
 
 class MatrixFactorization:
@@ -19,10 +18,11 @@ class MatrixFactorization:
         self.predicted_ratings = None
         self.rating_predict_matrix = {}
 
-    def generate_dataset(self):
-        ratings = pd.read_csv('./data/ml-latest-small/ratings.csv', usecols=['userId', 'movieId', 'rating'],
+    def generate_dataset(self, training_set_file, testing_set_file):
+        self.train_dataset = pd.read_csv(training_set_file, usecols=['userId', 'movieId', 'rating'],
                               dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
-        self.train_dataset, self.test_dataset = train_test_split(ratings, train_size=0.8)
+        self.test_dataset = pd.read_csv(testing_set_file, usecols=['userId', 'movieId', 'rating'],
+                              dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
         self.pivot_table = self.train_dataset.pivot(index='userId', columns='movieId', values='rating').fillna(0)
         self.feature_matrix = self.pivot_table.iloc[:, :].values
         self.user_rating_mean = np.mean(self.feature_matrix, axis=1)
@@ -99,6 +99,7 @@ class MatrixFactorization:
 
 
 matrixFactorization = MatrixFactorization(10, 20)
-matrixFactorization.generate_dataset()
+# matrixFactorization.generate_dataset()
+matrixFactorization.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
 matrixFactorization.predict_rating()
 matrixFactorization.test()
