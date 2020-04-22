@@ -30,6 +30,9 @@ class TFIDF:
         self.mat = None
         self.vocab = set()
         self.idf = None
+        self.similarity_matrix = None
+        self.sorted_sim_mat = None
+        self.n_movies = 0
 
     def add_movie(self, movieId, words):
         movieId = int(movieId)
@@ -39,7 +42,9 @@ class TFIDF:
         self.vocab = self.vocab.union(content)
 
     def TFIDF(self):
-        self.mat = np.zeros((len(self.movies), len(self.vocab)), dtype=np.float32)
+        self.n_movies = len(self.movies)
+        self.n_vocab = len(self.vocab)
+        self.mat = np.zeros((self.n_movies, self.n_vocab), dtype=np.float32)
         for movieId in self.movies:
             if movieId not in self.movieId2i:
                 self.movieId2i[movieId] = len(self.movieId2i)
@@ -50,8 +55,13 @@ class TFIDF:
                 self.mat[self.movieId2i[movieId], self.w2i[word]] += 1
         self.mat = np.log(self.mat + 1)
         df = np.count_nonzero(self.mat, axis=0)
-        self.idf = np.log(len(self.movies) / (1 + df)) + 1
+        self.idf = np.log(self.n_movies / (1 + df)) + 1
         self.mat *= self.idf[None,:]
+
+    def build_similarity_matrix(self):
+        norm_mat = (self.mat * self.mat).sum(1, keepdims=True) ** .5
+        self.similarity_matrix = self.mat @ self.mat.T / norm_mat / norm_mat.T
+        self.sorted_sim_mat = np.apply_along_axis(np.argsort, 1, self.similarity_matrix)
 
     def movie_sim(self, a, b):
         veca = self.mat[self.movieId2i[a]]
@@ -65,7 +75,7 @@ class TFIDF:
         return np.sqrt(np.sum(u*u))
 
     def query_sent(self, words):
-        self.vec = np.zeros((len(self.vocab),), dtype=np.float32)
+        self.vec = np.zeros((self.n_vocab,), dtype=np.float32)
         for word in words:
             if word not in self.w2i:
                 continue
@@ -89,11 +99,11 @@ class TFIDF:
                 pairs = [(self.i2movieId[idx], scores[idx]) for idx in np.argsort(scores)[::-1] if not self.i2movieId[idx] in watched_list]
             else:
                 pairs = [(self.i2movieId[idx], scores[idx]) for idx in np.argsort(scores)[::-1] if self.i2movieId[idx] in watched_list]
-        return pairs[:k]
+        return pairs
 
     def query_movie(self, movieId, mode = 0, k = 10, watched_list = None):
-        vec = self.mat[self.movieId2i[movieId]]
-        return self.query_vec(vec, mode, k, watched_list)
+        ret = self.sorted_sim_mat[self.movieId2i[movieId], :]
+        return ret
 
 
 class UserProfile:
@@ -141,12 +151,23 @@ def recommend(user_list, user_profile, tfidf, k=10):
     for userId in user_list:
         logger.info('Recommending for user {}'.format(userId))
         vec_user = user_profile.profiles[userId]
-        watched_list = user_profile.ratings[userId].keys()
+        watched_list = set(user_profile.ratings[userId].keys())
         recommended_movies = tfidf.query_vec(vec_user, mode = 0, k = k, watched_list = watched_list)
         #logger.info('Recommend movies: {}'.format(recommended_movies))
-        for (movieId, score) in recommended_movies:
-            most_similar_rated_movies = tfidf.query_movie(movieId, mode = 1, k = 5, watched_list = watched_list)
-            predicted_rating = np.mean([user_profile.ratings[userId][movieId] for movieId, score in most_similar_rated_movies])
+        for (movieId, score) in recommended_movies[:k]:
+            most_similar_rated_movies = tfidf.query_movie(movieId, mode = 1, k = 10, watched_list = watched_list)
+            i = 0
+            j = 0
+            predicted_rating = 0.0
+            for i in range(tfidf.n_movies):
+                m = tfidf.i2movieId[most_similar_rated_movies[i]]
+                if m in watched_list:
+                    predicted_rating += user_profile.ratings[userId][m]
+                    j += 1
+                    if j > 10:
+                        break
+            predicted_rating /= j
+            #predicted_rating = np.mean([user_profile.ratings[userId][tfidf.i2movieId[idx]] for idx in most_similar_rated_movies])
             #logger.info('Predicted rating for {}: {}'.format(movieId, predicted_rating))
             predictions = results.get(userId, [])
             predictions.append((movieId, predicted_rating))
@@ -208,6 +229,7 @@ if __name__ == '__main__':
     path = 'data/'
     path_movielens = path + 'ml-latest-small/'
     tfidf = compute_tfidf(path_movielens)
+    tfidf.build_similarity_matrix()
     if argparams.id == -1:
         for i in range(kFold):
             df_train = pd.read_csv(path + 'trainset_{}.csv'.format(i))
@@ -217,9 +239,8 @@ if __name__ == '__main__':
             user_profile = UserProfile()
             user_profile.build(df_train, tfidf)
             user_list = set(df_test.userId.to_list())
-            recommendations = recommend(user_list, user_profile, tfidf, 55)
+            recommendations = recommend(user_list, user_profile, tfidf, 10)
             evaluate(recommendations, df_test)
-            break
     else:
         logger.info('Training and testing on id {}'.format(argparams.id))
         i = argparams.id
@@ -230,7 +251,7 @@ if __name__ == '__main__':
         user_profile = UserProfile()
         user_profile.build(df_train, tfidf)
         user_list = set(df_test.userId.to_list())
-        recommendations = recommend(user_list, user_profile, tfidf, 55)
+        recommendations = recommend(user_list, user_profile, tfidf, 10)
         evaluate(recommendations, df_test)
 
 
