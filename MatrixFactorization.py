@@ -20,7 +20,7 @@ class MatrixFactorization:
         self.rating_predict_matrix = {}
 
     def generate_dataset(self):
-        ratings = pd.read_csv('./ml-latest-small/ratings.csv', usecols=['userId', 'movieId', 'rating'],
+        ratings = pd.read_csv('./data/ml-latest-small/ratings.csv', usecols=['userId', 'movieId', 'rating'],
                               dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
         self.train_dataset, self.test_dataset = train_test_split(ratings, train_size=0.8)
         self.pivot_table = self.train_dataset.pivot(index='userId', columns='movieId', values='rating').fillna(0)
@@ -42,7 +42,7 @@ class MatrixFactorization:
         NDCG = 0
         MAE = 0
         RMSE = 0
-        invalid_count = 0
+        valid_count = 0
         user_set = set(self.train_dataset['userId'].tolist())
 
         for user_id in user_set:
@@ -71,12 +71,12 @@ class MatrixFactorization:
             recommended_total += self.top_n_recommendation
             if IDCG > 0:
                 NDCG += DCG / IDCG
-                invalid_count += 1
+                valid_count += 1
 
         precision = matched_count / (recommended_total * 1.0)
         recall = matched_count / (test_total * 1.0)
         f_measure = 2 * precision * recall / (precision + recall)
-        NDCG /= (recommended_total - invalid_count)
+        NDCG /= valid_count
         print('Precision=%f, Recall=%f F-measure=%f, NDCG=%f' % (precision, recall, f_measure, NDCG))
 
         MAE /= predict_total

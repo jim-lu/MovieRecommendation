@@ -1,48 +1,80 @@
 import numpy as np
 import random
 import math
-import collections
 
 
 class ItemBasedCollaborativeFiltering:
 
-    def __init__(self, top_k_similar_movie=20, top_n_recommendation=10):
+    def __init__(self, top_k_similar_movie=10, top_n_recommendation=10):
         self.training_dataset = {}
         self.testing_dataset = {}
         self.top_k_similar_movie = top_k_similar_movie
         self.top_n_recommendation = top_n_recommendation
-        self.similar_matrix = {}
+        self.similar_matrix = None
         self.popularity_matrix = {}
+        self.user_number = 0
+        self.movie_number = 0
+        self.user_list = []
+        self.movie_list = []
+        self.user_id_dict = {}
+        self.movie_id_dict = {}
 
     def generate_dataset(self, filename, split_param=0.8):
         ratings = np.loadtxt(filename, dtype=np.str, delimiter=',')[1:].tolist()
+        user_set = set()
+        movie_set = set()
         for line in ratings:
-            user_id = line[0]
-            movie_id = line[1]
-            rating = line[2]
+            user_id = int(line[0])
+            movie_id = int(line[1])
+            rating = float(line[2])
             if random.random() < split_param:
                 self.training_dataset.setdefault(user_id, {})
-                self.training_dataset[user_id][movie_id] = float(rating)
+                self.training_dataset[user_id][movie_id] = rating
+                user_set.add(user_id)
+                movie_set.add(movie_id)
             else:
                 self.testing_dataset.setdefault(user_id, {})
-                self.testing_dataset[user_id][movie_id] = float(rating)
+                self.testing_dataset[user_id][movie_id] = rating
+        self.user_number = len(user_set)
+        self.movie_number = len(movie_set)
+        self.user_list = sorted(list(user_set))
+        self.movie_list = sorted(list(movie_set))
+        for i in range(len(self.user_list)):
+            self.user_id_dict[self.user_list[i]] = i
+        for i in range(len(self.movie_list)):
+            self.movie_id_dict[self.movie_list[i]] = i
 
     def calculate_movie_similarity(self):
+        movie_to_user_matrix = np.zeros([self.movie_number, self.user_number])
+        self.similar_matrix = np.zeros([self.movie_number, self.movie_number])
+        np.fill_diagonal(self.similar_matrix, 1)
         for user, movies in self.training_dataset.items():
             for movie in movies:
-                self.similar_matrix.setdefault(movie, collections.defaultdict(int))
-                if movie not in self.popularity_matrix:
-                    self.popularity_matrix[movie] = 0
-                self.popularity_matrix[movie] += 1
-                for other_movie in movies:
-                    if movie == other_movie:
+                movie_to_user_matrix[self.movie_id_dict[movie]][self.user_id_dict[user]] = self.training_dataset[user][movie]
+        row1 = 0
+        while row1 < self.movie_number - 2:
+            if row1 % 10 == 0:
+                print(row1)
+            denorm_sum = 0
+            norm = 1
+            row2 = row1 + 1
+            while row2 < self.movie_number - 1:
+                col = -1
+                while col < self.user_number - 1:
+                    col += 1
+                    if movie_to_user_matrix[row1][col] == 0 or movie_to_user_matrix[row2][col] == 0:
                         continue
-                    self.similar_matrix[movie][other_movie] += 1
-        for movie, related_movies in self.similar_matrix.items():
-            for other_movie, count in related_movies.items():
-                # Calculate the similarity based on the co-occurrence
-                self.similar_matrix[movie][other_movie] = count / math.sqrt(self.popularity_matrix[movie]
-                                                                            * self.popularity_matrix[other_movie])
+                    denorm_sum += movie_to_user_matrix[row1][col] * movie_to_user_matrix[row2][col]
+                    norm += math.log(pow(movie_to_user_matrix[row1][col], 2) + pow(movie_to_user_matrix[row2][col], 2))
+                if denorm_sum == 0:
+                    self.similar_matrix[row1][row2] = 0
+                    self.similar_matrix[row2][row1] = 0
+                    row2 += 1
+                    continue
+                self.similar_matrix[row1][row2] = math.log(denorm_sum) / norm
+                self.similar_matrix[row2][row1] = math.log(denorm_sum) / norm
+                row2 += 1
+            row1 += 1
 
     def test(self):
         matched_count = 0  # Number of the recommended movies matching the true test movie
@@ -54,6 +86,8 @@ class ItemBasedCollaborativeFiltering:
         RMSE = 0
 
         for user in self.training_dataset:
+            if user % 10 == 0:
+                print("Recommending for ", user)
             test_movies = self.testing_dataset.get(user, {})
             recommended_movies = self.recommend(user)
             pos = 0
@@ -92,15 +126,27 @@ class ItemBasedCollaborativeFiltering:
     def recommend(self, user):
         recommendation_list = {}
         rated_movies = self.training_dataset[user]
-        # More efficient by just recommend the movie in the training dataset
-        for movie, rating in rated_movies.items():
-            top_k_similar_movies = sorted(self.similar_matrix[movie].items(), key=lambda x: x[1],
-                                          reverse=True)[0: self.top_k_similar_movie]
-            for related_movie, similarity in top_k_similar_movies:
-                if related_movie in rated_movies:
+        for movie in self.movie_list:
+            if movie in rated_movies:
+                continue
+            movie_index = self.movie_id_dict[movie]
+            row = self.similar_matrix[movie_index]
+            denorm_sum = 0
+            norm = 0
+            i = 1
+            count = 0
+            while count < self.top_k_similar_movie - 1 and i < self.movie_number - 1:
+                if row[i] == 0 or row[i] == 1 or self.movie_list[i] not in self.training_dataset[user]:
+                    i += 1
                     continue
-                recommendation_list.setdefault(related_movie, 0)
-                recommendation_list[related_movie] += similarity * rating
+                denorm_sum += row[i] * self.training_dataset[user][self.movie_list[i]]
+                norm += row[i]
+                i += 1
+                count += 1
+            if norm == 0:
+                continue
+            recommendation_list.setdefault(movie, 0)
+            recommendation_list[movie] += denorm_sum / norm
         return sorted(recommendation_list.items(), key=lambda x: x[1], reverse=True)[0: self.top_n_recommendation]
 
 
