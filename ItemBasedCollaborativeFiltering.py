@@ -14,7 +14,7 @@ class ItemBasedCollaborativeFiltering:
         self.similar_matrix = {}
         self.popularity_matrix = {}
 
-    def generate_dataset(self, filename, split_param=0.05):
+    def generate_dataset(self, filename, split_param=0.8):
         ratings = np.loadtxt(filename, dtype=np.str, delimiter=',')[1:].tolist()
         for line in ratings:
             user_id = line[0]

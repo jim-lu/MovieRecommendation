@@ -43,12 +43,12 @@ class MatrixFactorization:
         MAE = 0
         RMSE = 0
         invalid_count = 0
-        user_set = set(self.train_dataset['userId'].to_list())
+        user_set = set(self.train_dataset['userId'].tolist())
 
         for user_id in user_set:
             print('Recommending for user %d' % user_id)
             user_test_data = self.test_dataset[self.test_dataset['userId'] == user_id]
-            test_movies = user_test_data['movieId'].to_list()
+            test_movies = user_test_data['movieId'].tolist()
             recommended_movies = self.recommend(user_id)
             pos = 0
             i = 0
@@ -88,7 +88,7 @@ class MatrixFactorization:
         user_row_num = user_id - 1
         sorted_prediction = self.predicted_ratings.iloc[user_row_num].sort_values(ascending=False)
         user_data = self.train_dataset[self.train_dataset.userId == user_id]
-        rated_movie = user_data['movieId'].to_list()
+        rated_movie = user_data['movieId'].tolist()
         for movie_id, rating in sorted_prediction.iteritems():
             if movie_id in rated_movie:
                 continue

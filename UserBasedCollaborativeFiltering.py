@@ -1,4 +1,3 @@
-# import pandas as pd
 import numpy as np
 import random
 import collections
@@ -66,6 +65,8 @@ class UserBasedCollaborativeFiltering:
         NDCG = 0
         MAE = 0
         RMSE = 0
+        predict_total = 0
+        valid_count = 0
 
         for user in self.training_dataset:
             test_movies = self.testing_dataset.get(user, {})
@@ -83,16 +84,18 @@ class UserBasedCollaborativeFiltering:
                     IDCG += 1 / math.log(1 + i, 2)
                     self.rating_predict_matrix.setdefault(user, {})
                     self.rating_predict_matrix[user][movie] = self.predict_rating(movie, similar_users)
+                    predict_total += 1
             test_total += len(test_movies)
             recommended_total += self.top_n_recommendation
             if IDCG > 0:
                 NDCG += DCG / IDCG
+                valid_count += 1
 
         # Evaluate recommendation
         precision = matched_count / (recommended_total * 1.0)
         recall = matched_count / (test_total * 1.0)
         f_measure = 2 * precision * recall / (precision + recall)
-        NDCG /= recommended_total
+        NDCG /= valid_count
 
         # Evaluate predicted rating
         for user, movies in self.rating_predict_matrix.items():
@@ -100,8 +103,8 @@ class UserBasedCollaborativeFiltering:
                 diff = self.rating_predict_matrix[user][movie] - self.testing_dataset[user][movie]
                 MAE += abs(diff)
                 RMSE += pow(diff, 2)
-        MAE /= recommended_total
-        RMSE = math.sqrt(RMSE / recommended_total)
+        MAE /= predict_total
+        RMSE = math.sqrt(RMSE / predict_total)
 
         print('Precision=%f, Recall=%f F-measure=%f, NDCG=%f' % (precision, recall, f_measure, NDCG))
         print('MAE=%f, RMSE=%f' % (MAE, RMSE))
@@ -132,6 +135,6 @@ class UserBasedCollaborativeFiltering:
 
 
 user_based_cf = UserBasedCollaborativeFiltering()
-user_based_cf.generate_dataset('./ml-latest-small/ratings.csv')
+user_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
 user_based_cf.calculate_user_similarity()
 user_based_cf.test()
