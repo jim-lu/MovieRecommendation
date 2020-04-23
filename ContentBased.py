@@ -55,7 +55,8 @@ class TFIDF:
                 self.mat[self.movieId2i[movieId], self.w2i[word]] += 1
         self.mat = np.log(self.mat + 1)
         df = np.count_nonzero(self.mat, axis=0)
-        self.idf = np.log(self.n_movies / (1 + df)) + 1
+        #self.idf = np.log(self.n_movies / (1 + df)) + 1
+        self.idf = np.log(self.n_movies / df)
         self.mat *= self.idf[None,:]
 
     def build_similarity_matrix(self):
@@ -110,6 +111,7 @@ class UserProfile:
     def __init__(self):
         self.profiles = {}
         self.ratings = {}
+        self.count = {}
 
     def build(self, df, tfidf):
         rating_user_sum = df.rating.groupby(df.userId).sum().to_dict()
@@ -124,6 +126,26 @@ class UserProfile:
             rating_user = self.ratings.get(userId, {})
             rating_user[movieId] = rating
             self.ratings[userId] = rating_user
+
+    def build_2(self, df, tfidf, k=20):
+        # Another user profile created by top k rated movies
+        #rating_user_sum = df.rating.groupby(df.userId).sum().to_dict()
+        for index, row in df.sort_values(by='rating', ascending=False).iterrows():
+            userId = int(row['userId'])
+            movieId = int(row['movieId'])
+            rating = row['rating']
+            if self.count.get(userId, 0) > k:
+                continue
+            self.count[userId] = self.count.get(userId, 0) + 1
+            vec_movie = tfidf.mat[tfidf.movieId2i[movieId]]
+            vec_user = self.profiles.get(userId, np.zeros(vec_movie.shape))
+            vec_user += vec_movie
+            self.profiles[userId] = vec_user
+            rating_user = self.ratings.get(userId, {})
+            rating_user[movieId] = rating
+            self.ratings[userId] = rating_user
+        for userId in self.profiles.keys():
+            self.profiles[userId] /= self.count[userId]
 
 
 def compute_tfidf(path, tokenizer = RegexpTokenizer(r'\w+')):
@@ -193,7 +215,7 @@ def evaluate(predictions, df):
         i = 0
         DCG = 0
         IDCG = 0
-        logger.info(test_movies)
+        #logger.info(test_movies)
         for movieId, predicted_rating in prediction_user:
             pos += 1
             if movieId in test_movies:
@@ -237,9 +259,10 @@ if __name__ == '__main__':
             logger.info('Loaded trainset_{}.csv, shape:{}'.format(i, df_train.shape))
             logger.info('Loaded testset_{}.csv, shape:{}'.format(i, df_test.shape))
             user_profile = UserProfile()
-            user_profile.build(df_train, tfidf)
+            #user_profile.build(df_train, tfidf)
+            user_profile.build_2(df_train, tfidf, k=20)
             user_list = set(df_test.userId.to_list())
-            recommendations = recommend(user_list, user_profile, tfidf, 10)
+            recommendations = recommend(user_list, user_profile, tfidf, 15)
             evaluate(recommendations, df_test)
     else:
         logger.info('Training and testing on id {}'.format(argparams.id))
