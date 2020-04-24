@@ -100,6 +100,6 @@ class MatrixFactorization:
 
 matrixFactorization = MatrixFactorization(10, 20)
 # matrixFactorization.generate_dataset()
-matrixFactorization.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
+matrixFactorization.generate_dataset('../data/trainset_4.csv', '../data/testset_4.csv')
 matrixFactorization.predict_rating()
 matrixFactorization.test()

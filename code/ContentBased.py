@@ -248,7 +248,7 @@ def evaluate(predictions, df):
 
 if __name__ == '__main__':
     kFold = 5
-    path = 'data/'
+    path = '../data/'
     path_movielens = path + 'ml-latest-small/'
     tfidf = compute_tfidf(path_movielens)
     tfidf.build_similarity_matrix()

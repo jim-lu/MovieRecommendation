@@ -154,6 +154,6 @@ class ItemBasedCollaborativeFiltering:
 
 item_based_cf = ItemBasedCollaborativeFiltering()
 # item_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
-item_based_cf.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
+item_based_cf.generate_dataset('../data/trainset_4.csv', '../data/testset_4.csv')
 item_based_cf.calculate_movie_similarity()
 item_based_cf.test()

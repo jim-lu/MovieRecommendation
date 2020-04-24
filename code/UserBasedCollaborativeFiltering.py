@@ -138,6 +138,6 @@ class UserBasedCollaborativeFiltering:
 
 user_based_cf = UserBasedCollaborativeFiltering()
 # user_based_cf.generate_dataset('./data/ml-latest-small/ratings.csv')
-user_based_cf.generate_dataset('./data/trainset_4.csv', './data/testset_4.csv')
+user_based_cf.generate_dataset('../data/trainset_4.csv', '../data/testset_4.csv')
 user_based_cf.calculate_user_similarity()
 user_based_cf.test()
